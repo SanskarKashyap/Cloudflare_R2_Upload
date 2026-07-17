@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3'
 import express from 'express'
 import md5 from 'md5'
 import multer from 'multer'
@@ -61,6 +61,37 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
         console.error('Upload error', err)
         res.status(500).json({ error: err?.message || 'Upload failed.' })
+    }
+})
+
+app.get('/files', async (req, res) => {
+    try {
+        const files: { key: string, size: number, lastModified?: Date, url?: string }[] = []
+        let continuationToken: string | undefined
+
+        do {
+            const data = await S3.send(new ListObjectsV2Command({
+                Bucket: r2BucketName,
+                ContinuationToken: continuationToken
+            }))
+
+            for (const obj of data.Contents || []) {
+                if (!obj.Key) continue
+                files.push({
+                    key: obj.Key,
+                    size: obj.Size || 0,
+                    lastModified: obj.LastModified,
+                    url: r2PublicBaseUrl ? `${r2PublicBaseUrl}/${obj.Key}` : undefined
+                })
+            }
+
+            continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined
+        } while (continuationToken)
+
+        res.json({ files })
+    } catch (err: any) {
+        console.error('List error', err)
+        res.status(500).json({ error: err?.message || 'Failed to list files.' })
     }
 })
 
