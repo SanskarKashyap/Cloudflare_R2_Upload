@@ -49,6 +49,38 @@
     .success {
         color: #1a7f37;
     }
+    #listBtn {
+        background: none;
+        border: 1px solid #999;
+    }
+    #fileList {
+        margin-top: 24px;
+        text-align: left;
+        font-size: 0.9rem;
+        max-height: 320px;
+        overflow-y: auto;
+        border-top: 1px solid #ddd;
+    }
+    #fileList .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 4px;
+        border-bottom: 1px solid #eee;
+    }
+    #fileList .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    #fileList .size {
+        color: #666;
+        flex-shrink: 0;
+    }
+    #fileList a {
+        color: #0060df;
+        text-decoration: none;
+    }
 </style>
 </head>
 <body>
@@ -61,15 +93,18 @@
 </div>
 
 <button id="uploadBtn" disabled>Upload</button>
+<button id="listBtn">List Files</button>
 
 <div id="status"></div>
-
+<div id="fileList"></div>
 <script>
     const dropzone = document.getElementById('dropzone')
     const fileInput = document.getElementById('fileInput')
     const filenameEl = document.getElementById('filename')
     const uploadBtn = document.getElementById('uploadBtn')
+    const listBtn = document.getElementById('listBtn')
     const statusEl = document.getElementById('status')
+    const fileListEl = document.getElementById('fileList')
 
     let selectedFile = null
 
@@ -131,6 +166,55 @@
             statusEl.textContent = 'Upload failed: ' + err.message
         } finally {
             uploadBtn.disabled = false
+        }
+    })
+
+    function escapeHtml(str) {
+        const div = document.createElement('div')
+        div.textContent = str
+        return div.innerHTML
+    }
+
+    function formatSize(bytes) {
+        if (!bytes) return '0 B'
+        const units = ['B', 'KB', 'MB', 'GB']
+        let i = 0
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024
+            i++
+        }
+        return `${bytes.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+    }
+
+    listBtn.addEventListener('click', async () => {
+        listBtn.disabled = true
+        fileListEl.textContent = 'Loading...'
+
+        try {
+            const res = await fetch('/files')
+            const data = await res.json()
+
+            if (!res.ok) {
+                fileListEl.innerHTML = `<p class="error">${data.error || 'Failed to list files.'}</p>`
+                return
+            }
+
+            if (!data.files.length) {
+                fileListEl.innerHTML = '<p>No files in bucket.</p>'
+                return
+            }
+
+            fileListEl.innerHTML = data.files.map(f => {
+                const safeKey = escapeHtml(f.key)
+                const nameHtml = f.url
+                    ? `<a href="${escapeHtml(f.url)}" target="_blank">${safeKey}</a>`
+                    : safeKey
+                return `<div class="row"><span class="name">${nameHtml}</span><span class="size">${formatSize(f.size)}</span></div>`
+            }).join('')
+        } catch (err) {
+            fileListEl.innerHTML = `<p class="error">Failed to list files: ${err.message}</p>`
+        } finally {
+            listBtn.disabled = false
         }
     })
 </script>
