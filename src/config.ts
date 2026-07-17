@@ -1,27 +1,33 @@
 const {
-    CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_R2_ACCESS_KEY_ID,
-    CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-    CLOUDFLARE_R2_BUCKET_NAME
+    R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_NAME,
+    R2_S3_ENDPOINT,
+    R2_PUBLIC_BASE_URL
 } = process.env
 
 if (
-    !CLOUDFLARE_ACCOUNT_ID ||
-    !CLOUDFLARE_R2_ACCESS_KEY_ID ||
-    !CLOUDFLARE_R2_SECRET_ACCESS_KEY ||
-    !CLOUDFLARE_R2_BUCKET_NAME
+    !R2_ACCOUNT_ID ||
+    !R2_ACCESS_KEY_ID ||
+    !R2_SECRET_ACCESS_KEY ||
+    !R2_BUCKET_NAME
 ) {
     throw new Error('Missing environment variables.')
 }
 
-const cloudflareAccountId: string = CLOUDFLARE_ACCOUNT_ID
-const cloudflareR2AccessKeyId: string = CLOUDFLARE_R2_ACCESS_KEY_ID
-const cloudflareR2SecretAccessKey: string = CLOUDFLARE_R2_SECRET_ACCESS_KEY
-const cloudflareR2BucketName: string = CLOUDFLARE_R2_BUCKET_NAME
+const r2AccountId: string = R2_ACCOUNT_ID
+const r2AccessKeyId: string = R2_ACCESS_KEY_ID
+const r2SecretAccessKey: string = R2_SECRET_ACCESS_KEY
+const r2BucketName: string = R2_BUCKET_NAME
+const r2S3Endpoint: string = R2_S3_ENDPOINT || `https://${r2AccountId}.r2.cloudflarestorage.com`
+const r2PublicBaseUrl: string | undefined = R2_PUBLIC_BASE_URL
 
 export {
-    cloudflareAccountId,
-    cloudflareR2AccessKeyId,
-    cloudflareR2SecretAccessKey,
-    cloudflareR2BucketName
+    r2AccountId,
+    r2AccessKeyId,
+    r2SecretAccessKey,
+    r2BucketName,
+    r2S3Endpoint,
+    r2PublicBaseUrl
 }

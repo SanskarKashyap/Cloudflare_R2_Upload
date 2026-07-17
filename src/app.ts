@@ -1,43 +1,15 @@
 import {
-    ListBucketsCommand,
-    ListObjectsV2Command,
     PutObjectCommand,
-    PutObjectCommandInput,
-    S3Client
+    PutObjectCommandInput
 } from '@aws-sdk/client-s3'
 import fs  from 'fs'
 import md5 from 'md5'
 
-import {
-    cloudflareAccountId,
-    cloudflareR2AccessKeyId,
-    cloudflareR2SecretAccessKey,
-    cloudflareR2BucketName
-} from './config.js'
+import { r2BucketName, r2PublicBaseUrl } from './config.js'
+import S3 from './s3Client.js'
 
-const S3 = new S3Client({
-    region: 'auto',
-    endpoint: `https://${cloudflareAccountId}.r2.cloudflarestorage.com`,
-    credentials: {
-        accessKeyId: cloudflareR2AccessKeyId,
-        secretAccessKey: cloudflareR2SecretAccessKey,
-    },
-});
-
-/*console.log(
-    await S3.send(
-        new ListBucketsCommand('')
-    )
-);
-
-console.log(
-    await S3.send(
-        new ListObjectsV2Command({ Bucket: cloudflareR2BucketName })
-    )
-);*/
-
-const getFileList = (dirName) => {
-    let files = [];
+const getFileList = (dirName: string): string[] => {
+    let files: string[] = [];
     const items = fs.readdirSync(dirName, { withFileTypes: true });
 
     for (const item of items) {
@@ -64,7 +36,7 @@ try {
         console.log(fileName)
 
         const uploadParams: PutObjectCommandInput = {
-            Bucket: cloudflareR2BucketName,
+            Bucket: r2BucketName,
             Key: fileName,
             Body: fileStream,
             ContentLength: fs.statSync(file).size,
@@ -85,10 +57,15 @@ try {
 
         const data = await S3.send(cmd);
         console.log(`Success - Status Code: ${data.$metadata.httpStatusCode}`);
+
+        if (r2PublicBaseUrl) {
+            console.log(`Public URL: ${r2PublicBaseUrl}/${fileName}`);
+        }
     }
-} catch (err) {
-    if (err.hasOwnProperty('$metadata')) {
-        console.error(`Error - Status Code: ${err.$metadata.httpStatusCode} - ${err.message}`);
+} catch (err: unknown) {
+    if (err && typeof err === 'object' && '$metadata' in err) {
+        const awsErr = err as { $metadata: { httpStatusCode?: number }, message: string }
+        console.error(`Error - Status Code: ${awsErr.$metadata.httpStatusCode} - ${awsErr.message}`);
     } else {
         console.error('Error', err);
     }
