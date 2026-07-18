@@ -566,11 +566,15 @@
         pdfFrame.classList.remove('hidden')
         pdfFrame.src = `/download?key=${encodeURIComponent(f.key)}`
 
-        resetTextPanel()
         checkCachedExtraction()
     }
 
-    // --- text extraction (right panel), explicit only ---
+    // --- text extraction (right panel) ---
+    // Opening a PDF auto-checks IndexedDB, then Supabase, and displays the
+    // text immediately if either already has it — no click needed. Actual
+    // extraction (for a PDF neither cache has yet) still requires clicking
+    // "Extract Text", since it can be slow (OCR) and shouldn't fire just
+    // from browsing the file list.
 
     function pdfRecordId(key) {
         return key
@@ -592,16 +596,70 @@
         extractBtn.textContent = 'Extract Text'
     }
 
+    function displayExtractedText(record, sourceLabel) {
+        textPreviewEl.textContent = record.text
+        textPreviewEl.classList.remove('hidden')
+        textStatusEl.className = 'success'
+        textStatusEl.textContent = `${record.numPages} page(s), ${record.text.length.toLocaleString()} characters${record.usedOcr ? ', via OCR' : ''} (${sourceLabel}).`
+        extractBtn.textContent = 'View Extracted Text'
+    }
+
+    // Looks for a usable extraction without running OCR/extraction: checks
+    // IndexedDB first, then Supabase (syncing a Supabase hit back into
+    // IndexedDB). Returns null if neither has it.
+    async function findExistingExtraction(key, lastModified) {
+        const local = await getPdfText(pdfRecordId(key))
+        if (isUsableCache(local)) {
+            return { record: local, source: 'from cache' }
+        }
+
+        let remote = null
+        try {
+            remote = await fetchPdfTextFromSupabase(key, lastModified)
+        } catch (err) {
+            console.warn('Supabase lookup failed:', err)
+        }
+
+        if (remote && remote.text) {
+            await savePdfText(remote)
+            return { record: remote, source: 'synced from Supabase' }
+        }
+
+        return null
+    }
+
     async function checkCachedExtraction() {
-        const cached = await getPdfText(pdfRecordId(selectedPdf.key))
-        if (isUsableCache(cached)) {
-            extractBtn.textContent = 'View Extracted Text'
-            textStatusEl.textContent = `Cached: ${cached.numPages} page(s), extracted ${formatDate(cached.extractedAt)}${cached.usedOcr ? ' via OCR' : ''}.`
-        } else {
-            extractBtn.textContent = 'Extract Text'
-            textStatusEl.textContent = cached && cached.lastModified !== selectedPdf.lastModified
+        const pdfAtRequestTime = selectedPdf
+        resetTextPanel()
+        extractBtn.disabled = true
+        textStatusEl.textContent = 'Checking for an existing extraction...'
+
+        try {
+            const found = await findExistingExtraction(pdfAtRequestTime.key, pdfAtRequestTime.lastModified)
+            if (selectedPdf !== pdfAtRequestTime) return // user selected a different PDF meanwhile
+
+            if (found) {
+                displayExtractedText(found.record, found.source)
+                renderSavedList()
+                return
+            }
+
+            const staleLocal = await getPdfText(pdfRecordId(pdfAtRequestTime.key))
+            if (selectedPdf !== pdfAtRequestTime) return
+
+            textStatusEl.className = 'muted'
+            textStatusEl.textContent = staleLocal && staleLocal.lastModified !== pdfAtRequestTime.lastModified
                 ? 'File changed since last extraction — click to re-extract.'
                 : 'Not extracted yet.'
+        } catch (err) {
+            if (selectedPdf === pdfAtRequestTime) {
+                textStatusEl.className = 'error'
+                textStatusEl.textContent = 'Failed to check for an existing extraction: ' + err.message
+            }
+        } finally {
+            if (selectedPdf === pdfAtRequestTime) {
+                extractBtn.disabled = false
+            }
         }
     }
 
@@ -651,42 +709,22 @@
     extractBtn.addEventListener('click', async () => {
         if (!selectedPdf) return
 
+        const pdfAtRequestTime = selectedPdf
         const id = pdfRecordId(selectedPdf.key)
         extractBtn.disabled = true
 
         try {
-            const cached = await getPdfText(id)
-            if (isUsableCache(cached)) {
-                textPreviewEl.textContent = cached.text
-                textPreviewEl.classList.remove('hidden')
-                textStatusEl.className = 'success'
-                textStatusEl.textContent = `${cached.numPages} page(s), ${cached.text.length.toLocaleString()} characters (from cache${cached.usedOcr ? ', via OCR' : ''}).`
-                return
-            }
+            // Re-check in case this PDF was extracted/synced elsewhere since it was opened.
+            const found = await findExistingExtraction(selectedPdf.key, selectedPdf.lastModified)
+            if (selectedPdf !== pdfAtRequestTime) return
 
-            textStatusEl.className = ''
-            textStatusEl.textContent = 'Checking Supabase for an existing extraction...'
-
-            let remote = null
-            try {
-                remote = await fetchPdfTextFromSupabase(selectedPdf.key, selectedPdf.lastModified)
-            } catch (err) {
-                console.warn('Supabase lookup failed, falling back to extraction:', err)
-            }
-
-            if (remote && remote.text) {
-                await savePdfText(remote)
-
-                textPreviewEl.textContent = remote.text
-                textPreviewEl.classList.remove('hidden')
-                textStatusEl.className = 'success'
-                textStatusEl.textContent = `${remote.numPages} page(s), ${remote.text.length.toLocaleString()} characters (synced from Supabase${remote.usedOcr ? ', via OCR' : ''}).`
-                extractBtn.textContent = 'View Extracted Text'
-
+            if (found) {
+                displayExtractedText(found.record, found.source)
                 renderSavedList()
                 return
             }
 
+            textStatusEl.className = ''
             textStatusEl.textContent = 'Fetching PDF...'
 
             const res = await fetch(`/download?key=${encodeURIComponent(selectedPdf.key)}`)
@@ -694,7 +732,9 @@
             const buffer = await res.arrayBuffer()
 
             const { text, numPages, usedOcr } = await extractPdfTextFromBytes(buffer, (page, total, extra) => {
-                textStatusEl.textContent = extra ? `Page ${page}/${total}: ${extra}` : `Extracted page ${page}/${total}...`
+                if (selectedPdf === pdfAtRequestTime) {
+                    textStatusEl.textContent = extra ? `Page ${page}/${total}: ${extra}` : `Extracted page ${page}/${total}...`
+                }
             })
 
             const record = {
@@ -717,18 +757,19 @@
                 console.warn('Failed to save extraction to Supabase:', err)
             }
 
-            textPreviewEl.textContent = text
-            textPreviewEl.classList.remove('hidden')
-            textStatusEl.className = 'success'
-            textStatusEl.textContent = `Extracted ${numPages} page(s), ${text.length.toLocaleString()} characters${usedOcr ? ' (via OCR — no embedded text layer found)' : ''}, and saved locally${savedToSupabase ? ' + to Supabase' : ' (Supabase save failed — see console)'}.`
-            extractBtn.textContent = 'View Extracted Text'
+            if (selectedPdf !== pdfAtRequestTime) return
 
+            displayExtractedText(record, savedToSupabase ? 'saved locally + to Supabase' : 'saved locally, Supabase save failed')
             renderSavedList()
         } catch (err) {
-            textStatusEl.className = 'error'
-            textStatusEl.textContent = 'Failed to extract PDF text: ' + err.message
+            if (selectedPdf === pdfAtRequestTime) {
+                textStatusEl.className = 'error'
+                textStatusEl.textContent = 'Failed to extract PDF text: ' + err.message
+            }
         } finally {
-            extractBtn.disabled = false
+            if (selectedPdf === pdfAtRequestTime) {
+                extractBtn.disabled = false
+            }
         }
     })
 
