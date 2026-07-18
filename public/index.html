@@ -4,44 +4,48 @@
 <meta charset="UTF-8">
 <title>R2 Upload</title>
 <style>
+    * {
+        box-sizing: border-box;
+    }
     body {
         font-family: system-ui, sans-serif;
-        max-width: 480px;
-        margin: 80px auto;
-        text-align: center;
+        margin: 0;
         color: #222;
+        background: #fafafa;
     }
     h1 {
-        font-size: 1.4rem;
-        margin-bottom: 24px;
+        font-size: 1.2rem;
+        margin: 0;
+        padding: 14px 20px;
+        border-bottom: 1px solid #ddd;
+        background: #fff;
     }
-    #dropzone {
-        border: 2px dashed #999;
-        border-radius: 8px;
-        padding: 40px 20px;
-        cursor: pointer;
-    }
-    #dropzone.dragover {
-        border-color: #333;
-        background: #f5f5f5;
+    h2 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #666;
+        margin: 0 0 10px;
     }
     button {
-        margin-top: 20px;
-        padding: 10px 24px;
-        font-size: 1rem;
+        padding: 8px 16px;
+        font-size: 0.9rem;
         cursor: pointer;
+        border: 1px solid #999;
+        background: #fff;
+        border-radius: 6px;
     }
     button:disabled {
         cursor: not-allowed;
-        opacity: 0.6;
+        opacity: 0.5;
     }
-    #status {
-        margin-top: 20px;
-        font-size: 0.95rem;
-        word-break: break-all;
+    button.primary {
+        background: #0060df;
+        border-color: #0060df;
+        color: #fff;
     }
-    #status a {
-        color: #0060df;
+    .hidden {
+        display: none !important;
     }
     .error {
         color: #c0392b;
@@ -49,125 +53,361 @@
     .success {
         color: #1a7f37;
     }
-    #listBtn {
-        background: none;
-        border: 1px solid #999;
+    .muted {
+        color: #777;
+        font-size: 0.85rem;
     }
-    #fileList {
-        margin-top: 24px;
-        text-align: left;
-        font-size: 0.9rem;
-        max-height: 320px;
+
+    #layout {
+        display: grid;
+        grid-template-columns: 280px 1fr 340px 280px;
+        gap: 1px;
+        background: #ddd;
+        height: calc(100vh - 49px);
+    }
+    #layout > section {
+        background: #fff;
         overflow-y: auto;
-        border-top: 1px solid #ddd;
+        padding: 16px;
     }
-    #fileList .row {
+
+    /* --- Files panel --- */
+    #dropzone {
+        border: 2px dashed #bbb;
+        border-radius: 8px;
+        padding: 20px 10px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #555;
+    }
+    #dropzone.dragover {
+        border-color: #0060df;
+        background: #f0f6ff;
+    }
+    #uploadBtn {
+        width: 100%;
+        margin-top: 10px;
+    }
+    #uploadStatus {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        word-break: break-all;
+    }
+    #fileListHead {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
-        padding: 8px 4px;
-        border-bottom: 1px solid #eee;
+        align-items: center;
+        margin-top: 20px;
     }
-    #fileList .name {
+    #fileListHead h2 {
+        margin: 0;
+    }
+    #refreshFilesBtn {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+    }
+    #fileList {
+        margin-top: 10px;
+        font-size: 0.85rem;
+    }
+    #fileList .fileRow {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+    #fileList .fileRow:hover {
+        background: #f5f5f5;
+    }
+    #fileList .fileRow.selected {
+        background: #eaf1ff;
+        border-color: #0060df;
+    }
+    #fileList .fileRow .name {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    #fileList .size {
-        color: #666;
-        flex-shrink: 0;
+    #fileList .fileRow .meta {
+        color: #888;
+        font-size: 0.75rem;
     }
-    #fileList a {
+    #fileList .nonPdf {
+        cursor: default;
+    }
+    #fileList .nonPdf a {
         color: #0060df;
         text-decoration: none;
+    }
+
+    /* --- Viewer panel --- */
+    #viewerSection {
+        padding: 0 !important;
+        display: flex;
+        flex-direction: column;
+    }
+    #viewerHeader {
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    #viewerEmpty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 0.9rem;
+    }
+    #pdfFrame {
+        flex: 1;
+        border: none;
+        width: 100%;
+    }
+
+    /* --- Text panel --- */
+    #extractBtn {
+        width: 100%;
+    }
+    #textStatus {
+        margin-top: 10px;
+        font-size: 0.85rem;
+    }
+    #textPreview {
+        margin-top: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #f7f7f7;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    /* --- Saved panel --- */
+    #savedList .row {
+        padding: 8px 4px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.85rem;
+    }
+    #savedList .rowHead {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+    }
+    #savedList .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    #savedList .meta {
+        color: #888;
+        font-size: 0.7rem;
+        margin-top: 2px;
+    }
+    #savedList .actions {
+        margin-top: 6px;
+        display: flex;
+        gap: 6px;
+    }
+    #savedList .actions button {
+        padding: 3px 8px;
+        font-size: 0.75rem;
+    }
+    #savedList pre {
+        margin-top: 6px;
+        max-height: 160px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #f7f7f7;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 0.75rem;
     }
 </style>
 </head>
 <body>
 
-<h1>Upload to R2</h1>
+<h1>R2 Upload &amp; PDF Library</h1>
 
-<div id="dropzone">
-    <p id="filename">Click to select a file</p>
-    <input type="file" id="fileInput" hidden>
+<div id="layout">
+
+    <section id="filesSection">
+        <h2>Upload</h2>
+        <div id="dropzone">
+            <p id="filename">Click or drop a file to upload</p>
+            <input type="file" id="fileInput" hidden>
+        </div>
+        <button id="uploadBtn" class="primary" disabled>Upload</button>
+        <div id="uploadStatus"></div>
+
+        <div id="fileListHead">
+            <h2>Files</h2>
+            <button id="refreshFilesBtn">Refresh</button>
+        </div>
+        <div id="fileList" class="muted">Loading...</div>
+    </section>
+
+    <section id="viewerSection">
+        <div id="viewerHeader">No PDF selected</div>
+        <div id="viewerEmpty">Select a PDF from the list to preview it here.</div>
+        <iframe id="pdfFrame" class="hidden"></iframe>
+    </section>
+
+    <section id="textSection">
+        <h2>Extracted Text</h2>
+        <button id="extractBtn" disabled>Select a PDF first</button>
+        <div id="textStatus" class="muted"></div>
+        <div id="textPreview" class="hidden"></div>
+    </section>
+
+    <section id="savedSection">
+        <h2>Saved Extractions</h2>
+        <div id="savedList" class="muted">No extracted PDF texts saved yet.</div>
+    </section>
+
 </div>
 
-<button id="uploadBtn" disabled>Upload</button>
-<button id="listBtn">List Files</button>
+<script type="module">
+    import * as pdfjsLib from '/vendor/pdfjs/pdf.min.mjs'
+    import Tesseract from '/vendor/tesseract/tesseract.esm.min.js'
 
-<div id="status"></div>
-<div id="fileList"></div>
-<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs'
+
     const dropzone = document.getElementById('dropzone')
     const fileInput = document.getElementById('fileInput')
     const filenameEl = document.getElementById('filename')
     const uploadBtn = document.getElementById('uploadBtn')
-    const listBtn = document.getElementById('listBtn')
-    const statusEl = document.getElementById('status')
+    const uploadStatusEl = document.getElementById('uploadStatus')
+    const refreshFilesBtn = document.getElementById('refreshFilesBtn')
     const fileListEl = document.getElementById('fileList')
 
-    let selectedFile = null
+    const viewerHeaderEl = document.getElementById('viewerHeader')
+    const viewerEmptyEl = document.getElementById('viewerEmpty')
+    const pdfFrame = document.getElementById('pdfFrame')
 
-    dropzone.addEventListener('click', () => fileInput.click())
+    const extractBtn = document.getElementById('extractBtn')
+    const textStatusEl = document.getElementById('textStatus')
+    const textPreviewEl = document.getElementById('textPreview')
 
-    fileInput.addEventListener('change', () => {
-        setFile(fileInput.files[0])
-    })
+    const savedListEl = document.getElementById('savedList')
 
-    dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault()
-        dropzone.classList.add('dragover')
-    })
+    let selectedUploadFile = null
+    let selectedPdf = null // { key, size, lastModified }
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('dragover')
-    })
+    // --- IndexedDB helpers ---
 
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault()
-        dropzone.classList.remove('dragover')
-        setFile(e.dataTransfer.files[0])
-    })
+    const DB_NAME = 'r2-upload-db'
+    const DB_VERSION = 1
+    const STORE_NAME = 'pdfTexts'
 
-    function setFile(file) {
-        if (!file) return
-        selectedFile = file
-        filenameEl.textContent = file.name
-        uploadBtn.disabled = false
-        statusEl.textContent = ''
-        statusEl.className = ''
+    function openDb() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VERSION)
+            req.onupgradeneeded = () => {
+                const db = req.result
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+                }
+            }
+            req.onsuccess = () => resolve(req.result)
+            req.onerror = () => reject(req.error)
+        })
     }
 
-    uploadBtn.addEventListener('click', async () => {
-        if (!selectedFile) return
+    async function savePdfText(record) {
+        const db = await openDb()
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite')
+            tx.objectStore(STORE_NAME).put(record)
+            tx.oncomplete = () => resolve()
+            tx.onerror = () => reject(tx.error)
+        })
+    }
 
-        uploadBtn.disabled = true
-        statusEl.className = ''
-        statusEl.textContent = 'Uploading...'
+    async function getPdfText(id) {
+        const db = await openDb()
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly')
+            const req = tx.objectStore(STORE_NAME).get(id)
+            req.onsuccess = () => resolve(req.result || null)
+            req.onerror = () => reject(req.error)
+        })
+    }
 
-        const formData = new FormData()
-        formData.append('file', selectedFile)
+    async function getAllPdfTexts() {
+        const db = await openDb()
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly')
+            const req = tx.objectStore(STORE_NAME).getAll()
+            req.onsuccess = () => resolve(req.result)
+            req.onerror = () => reject(req.error)
+        })
+    }
 
-        try {
-            const res = await fetch('/upload', { method: 'POST', body: formData })
-            const data = await res.json()
+    async function deletePdfText(id) {
+        const db = await openDb()
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite')
+            tx.objectStore(STORE_NAME).delete(id)
+            tx.oncomplete = () => resolve()
+            tx.onerror = () => reject(tx.error)
+        })
+    }
 
-            if (res.ok) {
-                statusEl.className = 'success'
-                statusEl.innerHTML = data.url
-                    ? `Uploaded! <a href="${data.url}" target="_blank">${data.url}</a>`
-                    : `Uploaded as "${data.key}"`
-            } else {
-                statusEl.className = 'error'
-                statusEl.textContent = data.error || 'Upload failed.'
-            }
-        } catch (err) {
-            statusEl.className = 'error'
-            statusEl.textContent = 'Upload failed: ' + err.message
-        } finally {
-            uploadBtn.disabled = false
+    // --- OCR fallback (for PDFs with no embedded text layer) ---
+
+    let tesseractWorker = null
+    let ocrProgressHandler = null
+
+    async function getTesseractWorker() {
+        if (!tesseractWorker) {
+            tesseractWorker = await Tesseract.createWorker('eng', undefined, {
+                workerPath: '/vendor/tesseract/worker.min.js',
+                corePath: '/vendor/tesseract/core',
+                langPath: '/vendor/tesseract/lang',
+                gzip: true,
+                logger: (m) => {
+                    if (m.status === 'recognizing text' && ocrProgressHandler) {
+                        ocrProgressHandler(m.progress)
+                    }
+                }
+            })
         }
-    })
+        return tesseractWorker
+    }
+
+    async function ocrPage(page, onOcrProgress) {
+        const viewport = page.getViewport({ scale: 2 })
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.ceil(viewport.width)
+        canvas.height = Math.ceil(viewport.height)
+        const ctx = canvas.getContext('2d')
+        await page.render({ canvasContext: ctx, viewport }).promise
+
+        const worker = await getTesseractWorker()
+        ocrProgressHandler = onOcrProgress
+        try {
+            const { data } = await worker.recognize(canvas)
+            return (data.text || '').trim()
+        } finally {
+            ocrProgressHandler = null
+        }
+    }
+
+    // --- shared helpers ---
 
     function escapeHtml(str) {
         const div = document.createElement('div')
@@ -186,8 +426,86 @@
         return `${bytes.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
     }
 
-    listBtn.addEventListener('click', async () => {
-        listBtn.disabled = true
+    function formatDate(iso) {
+        try {
+            return new Date(iso).toLocaleString()
+        } catch {
+            return iso
+        }
+    }
+
+    function isPdfKey(key) {
+        return key.toLowerCase().endsWith('.pdf')
+    }
+
+    // --- upload ---
+
+    dropzone.addEventListener('click', () => fileInput.click())
+
+    fileInput.addEventListener('change', () => {
+        setUploadFile(fileInput.files[0])
+    })
+
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        dropzone.classList.add('dragover')
+    })
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover')
+    })
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault()
+        dropzone.classList.remove('dragover')
+        setUploadFile(e.dataTransfer.files[0])
+    })
+
+    function setUploadFile(file) {
+        if (!file) return
+        selectedUploadFile = file
+        filenameEl.textContent = file.name
+        uploadBtn.disabled = false
+        uploadStatusEl.textContent = ''
+        uploadStatusEl.className = ''
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+        if (!selectedUploadFile) return
+
+        uploadBtn.disabled = true
+        uploadStatusEl.className = ''
+        uploadStatusEl.textContent = 'Uploading...'
+
+        const formData = new FormData()
+        formData.append('file', selectedUploadFile)
+
+        try {
+            const res = await fetch('/upload', { method: 'POST', body: formData })
+            const data = await res.json()
+
+            if (res.ok) {
+                uploadStatusEl.className = 'success'
+                uploadStatusEl.textContent = `Uploaded as "${data.key}"`
+                selectedUploadFile = null
+                filenameEl.textContent = 'Click or drop a file to upload'
+                loadFileList()
+            } else {
+                uploadStatusEl.className = 'error'
+                uploadStatusEl.textContent = data.error || 'Upload failed.'
+            }
+        } catch (err) {
+            uploadStatusEl.className = 'error'
+            uploadStatusEl.textContent = 'Upload failed: ' + err.message
+        } finally {
+            uploadBtn.disabled = false
+        }
+    })
+
+    // --- file list (left panel) ---
+
+    async function loadFileList() {
+        fileListEl.className = 'muted'
         fileListEl.textContent = 'Loading...'
 
         try {
@@ -200,23 +518,341 @@
             }
 
             if (!data.files.length) {
-                fileListEl.innerHTML = '<p>No files in bucket.</p>'
+                fileListEl.textContent = 'No files in bucket.'
                 return
             }
 
-            fileListEl.innerHTML = data.files.map(f => {
+            fileListEl.className = ''
+            fileListEl.innerHTML = ''
+
+            for (const f of data.files) {
+                const row = document.createElement('div')
                 const safeKey = escapeHtml(f.key)
-                const nameHtml = f.url
-                    ? `<a href="${escapeHtml(f.url)}" target="_blank">${safeKey}</a>`
-                    : safeKey
-                return `<div class="row"><span class="name">${nameHtml}</span><span class="size">${formatSize(f.size)}</span></div>`
-            }).join('')
+
+                if (isPdfKey(f.key)) {
+                    row.className = 'fileRow'
+                    row.innerHTML = `<span class="name">${safeKey}</span><span class="meta">${formatSize(f.size)}</span>`
+                    row.addEventListener('click', () => selectPdf(f, row))
+                    if (selectedPdf && selectedPdf.key === f.key) {
+                        row.classList.add('selected')
+                    }
+                } else {
+                    row.className = 'fileRow nonPdf'
+                    const link = `/download?key=${encodeURIComponent(f.key)}`
+                    row.innerHTML = `<span class="name"><a href="${link}" target="_blank">${safeKey}</a></span><span class="meta">${formatSize(f.size)}</span>`
+                }
+
+                fileListEl.appendChild(row)
+            }
         } catch (err) {
             fileListEl.innerHTML = `<p class="error">Failed to list files: ${err.message}</p>`
+        }
+    }
+
+    refreshFilesBtn.addEventListener('click', loadFileList)
+
+    // --- PDF preview (middle panel) ---
+
+    function selectPdf(f, rowEl) {
+        selectedPdf = { key: f.key, size: f.size, lastModified: f.lastModified }
+
+        for (const el of fileListEl.querySelectorAll('.fileRow.selected')) {
+            el.classList.remove('selected')
+        }
+        rowEl.classList.add('selected')
+
+        viewerHeaderEl.textContent = f.key
+        viewerEmptyEl.classList.add('hidden')
+        pdfFrame.classList.remove('hidden')
+        pdfFrame.src = `/download?key=${encodeURIComponent(f.key)}`
+
+        checkCachedExtraction()
+    }
+
+    // --- text extraction (right panel) ---
+    // Opening a PDF auto-checks IndexedDB, then Supabase, and displays the
+    // text immediately if either already has it — no click needed. Actual
+    // extraction (for a PDF neither cache has yet) still requires clicking
+    // "Extract Text", since it can be slow (OCR) and shouldn't fire just
+    // from browsing the file list.
+
+    function pdfRecordId(key) {
+        return key
+    }
+
+    function isUsableCache(cached) {
+        return !!cached
+            && cached.lastModified === selectedPdf.lastModified
+            && !!cached.text
+            && cached.text.trim().length > 0
+    }
+
+    function resetTextPanel() {
+        textPreviewEl.classList.add('hidden')
+        textPreviewEl.textContent = ''
+        textStatusEl.className = 'muted'
+        textStatusEl.textContent = ''
+        extractBtn.disabled = false
+        extractBtn.textContent = 'Extract Text'
+    }
+
+    function displayExtractedText(record, sourceLabel) {
+        textPreviewEl.textContent = record.text
+        textPreviewEl.classList.remove('hidden')
+        textStatusEl.className = 'success'
+        textStatusEl.textContent = `${record.numPages} page(s), ${record.text.length.toLocaleString()} characters${record.usedOcr ? ', via OCR' : ''} (${sourceLabel}).`
+        extractBtn.textContent = 'View Extracted Text'
+    }
+
+    // Looks for a usable extraction without running OCR/extraction: checks
+    // IndexedDB first, then Supabase (syncing a Supabase hit back into
+    // IndexedDB). Returns null if neither has it.
+    async function findExistingExtraction(key, lastModified) {
+        const local = await getPdfText(pdfRecordId(key))
+        if (isUsableCache(local)) {
+            return { record: local, source: 'from cache' }
+        }
+
+        let remote = null
+        try {
+            remote = await fetchPdfTextFromSupabase(key, lastModified)
+        } catch (err) {
+            console.warn('Supabase lookup failed:', err)
+        }
+
+        if (remote && remote.text) {
+            await savePdfText(remote)
+            return { record: remote, source: 'synced from Supabase' }
+        }
+
+        return null
+    }
+
+    async function checkCachedExtraction() {
+        const pdfAtRequestTime = selectedPdf
+        resetTextPanel()
+        extractBtn.disabled = true
+        textStatusEl.textContent = 'Checking for an existing extraction...'
+
+        try {
+            const found = await findExistingExtraction(pdfAtRequestTime.key, pdfAtRequestTime.lastModified)
+            if (selectedPdf !== pdfAtRequestTime) return // user selected a different PDF meanwhile
+
+            if (found) {
+                displayExtractedText(found.record, found.source)
+                renderSavedList()
+                return
+            }
+
+            const staleLocal = await getPdfText(pdfRecordId(pdfAtRequestTime.key))
+            if (selectedPdf !== pdfAtRequestTime) return
+
+            textStatusEl.className = 'muted'
+            textStatusEl.textContent = staleLocal && staleLocal.lastModified !== pdfAtRequestTime.lastModified
+                ? 'File changed since last extraction — click to re-extract.'
+                : 'Not extracted yet.'
+        } catch (err) {
+            if (selectedPdf === pdfAtRequestTime) {
+                textStatusEl.className = 'error'
+                textStatusEl.textContent = 'Failed to check for an existing extraction: ' + err.message
+            }
         } finally {
-            listBtn.disabled = false
+            if (selectedPdf === pdfAtRequestTime) {
+                extractBtn.disabled = false
+            }
+        }
+    }
+
+    // --- Supabase-backed text cache (via server routes; secret key stays server-side) ---
+
+    async function fetchPdfTextFromSupabase(key, lastModified) {
+        const res = await fetch(`/pdf-text?key=${encodeURIComponent(key)}&lastModified=${encodeURIComponent(lastModified || '')}`)
+        if (res.status === 404) return null
+        if (!res.ok) throw new Error(`Supabase lookup failed (${res.status})`)
+        return res.json()
+    }
+
+    async function savePdfTextToSupabase(record) {
+        const res = await fetch('/pdf-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(record)
+        })
+        if (!res.ok) throw new Error(`Supabase save failed (${res.status})`)
+    }
+
+    async function extractPdfTextFromBytes(buffer, onProgress) {
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
+        const pageTexts = []
+        let usedOcr = false
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum)
+            const content = await page.getTextContent()
+            let text = content.items.map((item) => item.str).join(' ').trim()
+
+            if (!text) {
+                usedOcr = true
+                if (onProgress) onProgress(pageNum, pdf.numPages, 'no text layer — running OCR...')
+                text = await ocrPage(page, (pct) => {
+                    if (onProgress) onProgress(pageNum, pdf.numPages, `OCR ${Math.round(pct * 100)}%`)
+                })
+            }
+
+            pageTexts.push(text)
+            if (onProgress) onProgress(pageNum, pdf.numPages, null)
+        }
+
+        return { text: pageTexts.join('\n\n'), numPages: pdf.numPages, usedOcr }
+    }
+
+    extractBtn.addEventListener('click', async () => {
+        if (!selectedPdf) return
+
+        const pdfAtRequestTime = selectedPdf
+        const id = pdfRecordId(selectedPdf.key)
+        extractBtn.disabled = true
+
+        try {
+            // Re-check in case this PDF was extracted/synced elsewhere since it was opened.
+            const found = await findExistingExtraction(selectedPdf.key, selectedPdf.lastModified)
+            if (selectedPdf !== pdfAtRequestTime) return
+
+            if (found) {
+                displayExtractedText(found.record, found.source)
+                renderSavedList()
+                return
+            }
+
+            textStatusEl.className = ''
+            textStatusEl.textContent = 'Fetching PDF...'
+
+            const res = await fetch(`/download?key=${encodeURIComponent(selectedPdf.key)}`)
+            if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`)
+            const buffer = await res.arrayBuffer()
+
+            const { text, numPages, usedOcr } = await extractPdfTextFromBytes(buffer, (page, total, extra) => {
+                if (selectedPdf === pdfAtRequestTime) {
+                    textStatusEl.textContent = extra ? `Page ${page}/${total}: ${extra}` : `Extracted page ${page}/${total}...`
+                }
+            })
+
+            const record = {
+                id,
+                key: selectedPdf.key,
+                size: selectedPdf.size,
+                lastModified: selectedPdf.lastModified,
+                numPages,
+                text,
+                usedOcr,
+                extractedAt: new Date().toISOString()
+            }
+            await savePdfText(record)
+
+            let savedToSupabase = true
+            try {
+                await savePdfTextToSupabase(record)
+            } catch (err) {
+                savedToSupabase = false
+                console.warn('Failed to save extraction to Supabase:', err)
+            }
+
+            if (selectedPdf !== pdfAtRequestTime) return
+
+            displayExtractedText(record, savedToSupabase ? 'saved locally + to Supabase' : 'saved locally, Supabase save failed')
+            renderSavedList()
+        } catch (err) {
+            if (selectedPdf === pdfAtRequestTime) {
+                textStatusEl.className = 'error'
+                textStatusEl.textContent = 'Failed to extract PDF text: ' + err.message
+            }
+        } finally {
+            if (selectedPdf === pdfAtRequestTime) {
+                extractBtn.disabled = false
+            }
         }
     })
+
+    // --- saved extractions (far right panel) ---
+
+    async function renderSavedList() {
+        const records = await getAllPdfTexts()
+
+        if (!records.length) {
+            savedListEl.className = 'muted'
+            savedListEl.textContent = 'No extracted PDF texts saved yet.'
+            return
+        }
+
+        records.sort((a, b) => b.extractedAt.localeCompare(a.extractedAt))
+
+        savedListEl.className = ''
+        savedListEl.innerHTML = ''
+
+        for (const record of records) {
+            const row = document.createElement('div')
+            row.className = 'row'
+
+            const head = document.createElement('div')
+            head.className = 'rowHead'
+
+            const name = document.createElement('span')
+            name.className = 'name'
+            name.textContent = record.key
+
+            head.appendChild(name)
+
+            const meta = document.createElement('div')
+            meta.className = 'meta'
+            meta.textContent = `${record.numPages}p · ${formatSize(record.size)} · ${formatDate(record.extractedAt)}${record.usedOcr ? ' · OCR' : ''}`
+
+            const actions = document.createElement('div')
+            actions.className = 'actions'
+
+            const viewBtn = document.createElement('button')
+            viewBtn.textContent = 'View'
+
+            const deleteBtn = document.createElement('button')
+            deleteBtn.textContent = 'Delete'
+
+            const pre = document.createElement('pre')
+            pre.classList.add('hidden')
+
+            viewBtn.addEventListener('click', () => {
+                const showing = !pre.classList.contains('hidden')
+                if (showing) {
+                    pre.classList.add('hidden')
+                    viewBtn.textContent = 'View'
+                } else {
+                    pre.textContent = record.text
+                    pre.classList.remove('hidden')
+                    viewBtn.textContent = 'Hide'
+                }
+            })
+
+            deleteBtn.addEventListener('click', async () => {
+                await deletePdfText(record.id)
+                renderSavedList()
+                if (selectedPdf && selectedPdf.key === record.key) {
+                    checkCachedExtraction()
+                }
+            })
+
+            actions.appendChild(viewBtn)
+            actions.appendChild(deleteBtn)
+
+            row.appendChild(head)
+            row.appendChild(meta)
+            row.appendChild(actions)
+            row.appendChild(pre)
+            savedListEl.appendChild(row)
+        }
+    }
+
+    // --- init ---
+
+    loadFileList()
+    renderSavedList()
 </script>
 
 </body>
