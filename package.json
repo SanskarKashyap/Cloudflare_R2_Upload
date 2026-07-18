@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nodemon",
+    "dev": "node --watch --watch-path=src --no-warnings --enable-source-maps -r dotenv/config ./scripts/dev.js",
     "build": "tsc",
     "upload:batch": "tsc && node --no-warnings --enable-source-maps -r dotenv/config ./build/app.js",
     "esbuild": "esbuild --bundle",
