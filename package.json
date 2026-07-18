@@ -7,14 +7,20 @@
     "dev": "nodemon",
     "build": "tsc",
     "upload:batch": "tsc && node --no-warnings --enable-source-maps -r dotenv/config ./build/app.js",
-    "esbuild": "esbuild --bundle"
+    "esbuild": "esbuild --bundle",
+    "sync:pdfjs": "node -e \"const fs=require('fs');fs.mkdirSync('public/vendor/pdfjs',{recursive:true});for(const f of ['pdf.min.mjs','pdf.worker.min.mjs'])fs.copyFileSync('node_modules/pdfjs-dist/build/'+f,'public/vendor/pdfjs/'+f)\"",
+    "sync:tesseract": "node -e \"const fs=require('fs');fs.mkdirSync('public/vendor/tesseract/core',{recursive:true});fs.copyFileSync('node_modules/tesseract.js/dist/tesseract.esm.min.js','public/vendor/tesseract/tesseract.esm.min.js');fs.copyFileSync('node_modules/tesseract.js/dist/worker.min.js','public/vendor/tesseract/worker.min.js');for(const f of ['tesseract-core-lstm.wasm','tesseract-core-lstm.wasm.js','tesseract-core-simd-lstm.wasm','tesseract-core-simd-lstm.wasm.js'])fs.copyFileSync('node_modules/tesseract.js-core/'+f,'public/vendor/tesseract/core/'+f)\"",
+    "postinstall": "npm run sync:pdfjs && npm run sync:tesseract"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
+    "@supabase/supabase-js": "^2.45.4",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "md5": "^2.3.0",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
